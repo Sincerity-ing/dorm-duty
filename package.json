@@ -1,0 +1,13 @@
+{
+  "name": "dorm-duty",
+  "version": "1.0.0",
+  "private": true,
+  "description": "宿舍值日安排 - 跨设备实时同步",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

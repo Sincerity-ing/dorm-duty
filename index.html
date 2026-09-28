@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宿舍值日安排</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --c1: #4f8cff;
+    --c2: #1fb57a;
+    --c3: #f59e0b;
+    --c4: #a855f7;
+    --bg: #f2f5fa;
+    --ink: #1f2937;
+    --muted: #9aa6b8;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  .hidden { display: none !important; }
+
+  /* ============ 首页 ============ */
+  #home { justify-content: center; padding: 32px 20px; }
+  .home-card {
+    width: 100%; max-width: 460px;
+    background: #fff; border-radius: 24px;
+    padding: 44px 28px 36px;
+    box-shadow: 0 12px 40px rgba(31, 41, 55, .08);
+    text-align: center;
+  }
+  .home-icon { font-size: 46px; margin-bottom: 10px; }
+  .home-title { font-size: 30px; font-weight: 800; letter-spacing: 4px; }
+  .home-sub { margin-top: 12px; font-size: 14px; color: var(--muted); line-height: 1.7; }
+  .btn-grid {
+    margin-top: 34px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  .person-btn {
+    border: none; border-radius: 20px;
+    height: 104px;
+    font-size: 40px; font-weight: 800; color: #fff;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,.10);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .person-btn small { font-size: 12px; font-weight: 500; opacity: .9; margin-top: 4px; letter-spacing: 2px; }
+  .person-btn:active { transform: scale(.95); }
+  .person-btn.p1 { background: var(--c1); }
+  .person-btn.p2 { background: var(--c2); }
+  .person-btn.p3 { background: var(--c3); }
+  .person-btn.p4 { background: var(--c4); }
+  .home-tip { margin-top: 26px; font-size: 12.5px; color: var(--muted); }
+
+  /* ============ 日历页 ============ */
+  #calendar { padding: 18px 14px 30px; }
+  .cal-card {
+    width: 100%; max-width: 520px;
+    background: #fff; border-radius: 22px;
+    padding: 18px 16px 20px;
+    box-shadow: 0 12px 40px rgba(31,41,55,.08);
+  }
+  .cal-top { display: flex; align-items: center; gap: 10px; }
+  .back-btn {
+    border: none; background: #eef2f8; color: var(--ink);
+    width: 38px; height: 38px; border-radius: 12px;
+    font-size: 18px; cursor: pointer; flex-shrink: 0;
+  }
+  .back-btn:active { background: #e2e8f2; }
+  .cal-title { font-size: 19px; font-weight: 800; }
+  .cal-title .dot {
+    display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+    margin: 0 6px 0 2px; vertical-align: middle;
+  }
+  .next-duty { font-size: 12.5px; color: var(--muted); margin: 10px 2px 2px; }
+  .next-duty b { color: var(--ink); }
+
+  .month-bar {
+    margin-top: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-btn {
+    border: none; background: #eef2f8; color: var(--ink);
+    width: 40px; height: 36px; border-radius: 11px;
+    font-size: 17px; cursor: pointer;
+  }
+  .nav-btn:active { background: #e2e8f2; }
+  .month-label {
+    font-size: 17px; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+    padding: 6px 12px; border-radius: 10px;
+  }
+  .month-label:hover { background: #f3f6fa; }
+  .month-label::after { content: "📅"; font-size: 11px; margin-left: 6px; opacity: .55; }
+  .month-jump { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: .01; }
+
+  /* 同步状态 */
+  .sync-pill {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: #7a8496;
+    background: #f3f6fa; padding: 5px 11px; border-radius: 20px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .sync-pill i { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; }
+  .sync-pill.pulse i { animation: syncpulse .7s ease; }
+  @keyframes syncpulse {
+    0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); }
+    100% { box-shadow: 0 0 0 9px rgba(34,197,94,0); }
+  }
+  .sync-pill.pending { background: #fff3df; color: #a8640a; }
+  .sync-pill.pending i { background: #f59e0b; }
+  .sync-pill.offline { background: #eceef2; color: #8a909d; }
+  .sync-pill.offline i { background: #9aa6b8; animation: none; }
+  .today-btn {
+    border: none; background: #eef2f8; font-size: 12.5px;
+    padding: 7px 14px; border-radius: 10px; cursor: pointer; color: var(--ink);
+  }
+
+  .week-row, .date-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  }
+  .week-row { margin-top: 14px; }
+  .week-row span {
+    text-align: center; font-size: 12.5px; color: var(--muted);
+    padding-bottom: 8px; font-weight: 600;
+  }
+  .cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    background: #f7f9fc;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    border: 2px solid transparent;
+    transition: transform .1s ease;
+  }
+  .cell:active { transform: scale(.93); }
+  .cell .d { font-size: 15px; font-weight: 600; line-height: 1; }
+  .cell .badge {
+    margin-top: 4px;
+    font-size: 10.5px; font-weight: 700;
+    min-width: 22px; padding: 1px 6px; border-radius: 20px;
+    text-align: center; line-height: 1.4;
+  }
+  .cell.other-month { background: transparent; cursor: default; opacity: .35; }
+  .cell.other-month:active { transform: none; }
+
+  .cell.today { border-color: #111827; }
+  .cell.today .d::after { content: "·"; }
+
+  /* 被选中的人值日的日期：特殊标记 */
+  .cell.mine .d, .cell.mine .badge { color: #fff; }
+  .cell.mine .badge { background: rgba(255,255,255,.25); }
+  .cell.mine.p1 { background: var(--c1); }
+  .cell.mine.p2 { background: var(--c2); }
+  .cell.mine.p3 { background: var(--c3); }
+  .cell.mine.p4 { background: var(--c4); }
+
+  /* 其他人值日：小标号 */
+  .cell.other .badge { background: #e8edf5; color: #6b7688; }
+
+  /* 休息日 */
+  .cell.rest { background: #f0f0f2; cursor: pointer; }
+  .cell.rest .d { color: #b3bac7; text-decoration: line-through; }
+  .cell.rest .badge { background: #dedfe4; color: #8a909d; }
+  .cell.rest.today { border-color: var(--muted); }
+
+  .legend {
+    margin-top: 16px;
+    display: flex; flex-wrap: wrap; gap: 12px;
+    font-size: 12px; color: #6b7688;
+    padding: 0 2px;
+  }
+  .legend i {
+    display: inline-block; width: 11px; height: 11px; border-radius: 3px;
+    margin-right: 4px; vertical-align: -1px;
+  }
+  .hint {
+    margin-top: 12px;
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+    padding: 10px 12px; background: #f7f9fc; border-radius: 10px;
+  }
+  .reset-link {
+    margin-top: 12px; text-align: center;
+  }
+  .reset-link button {
+    border: none; background: none; color: #b6bdc9; font-size: 12px;
+    cursor: pointer; text-decoration: underline;
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%) translateY(20px);
+    background: rgba(17,24,39,.92); color: #fff;
+    font-size: 13.5px; padding: 11px 20px; border-radius: 24px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 99; max-width: 86vw; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- 首页 -->
+<div class="screen" id="home">
+  <div class="home-card">
+    <div class="home-icon">🏠</div>
+    <div class="home-title">宿舍值日安排</div>
+    <div class="home-sub">四人轮流值日 · 点击编号查看值日日历<br>休息日不做安排 · 云端实时同步</div>
+    <div class="btn-grid">
+      <button class="person-btn p1" data-person="1">1<small>值日安排</small></button>
+      <button class="person-btn p2" data-person="2">2<small>值日安排</small></button>
+      <button class="person-btn p3" data-person="3">3<small>值日安排</small></button>
+      <button class="person-btn p4" data-person="4">4<small>值日安排</small></button>
+    </div>
+    <div class="home-tip">轮值顺序：1 → 2 → 3 → 4 循环（9月28日为 2 号）</div>
+  </div>
+</div>
+
+<!-- 日历页 -->
+<div class="screen hidden" id="calendar">
+  <div class="cal-card">
+    <div class="cal-top">
+      <button class="back-btn" id="backBtn">‹</button>
+      <div class="cal-title"><span class="dot" id="titleDot"></span><span id="titleText"></span> 的值日日历</div>
+      <span class="sync-pill" id="syncPill"><i></i>已同步</span>
+    </div>
+    <div class="next-duty" id="nextDuty"></div>
+
+    <div class="month-bar">
+      <button class="nav-btn" id="prevMonth">‹</button>
+      <div class="month-label" id="monthLabel" title="点击可跳转到任意月份，提前修改休息日"></div>
+      <input type="month" class="month-jump" id="monthJump">
+      <button class="today-btn" id="todayBtn">回到今天</button>
+      <button class="nav-btn" id="nextMonth">›</button>
+    </div>
+
+    <div class="week-row">
+      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="date-grid" id="dateGrid"></div>
+
+    <div class="legend">
+      <span><i id="legendMine"></i>我的值日</span>
+      <span><i style="background:#e8edf5"></i>他人值日</span>
+      <span><i style="background:#dedfe4"></i>休息日（不安排）</span>
+    </div>
+    <div class="hint">
+      点击任意日期可直接在日历上<strong>标记 / 取消休息日</strong>；点击上方<strong>月份标题</strong>可跳到未来任意月份、提前修改。休息日当天不安排值日，后续值日依次顺延（例如 10月1日休息，则安排从 10月2日继续）。修改会通过<strong>云端实时同步</strong>到四位成员的设备；没有网络时会先记在本机，恢复网络后自动补同步。
+    </div>
+    <div class="reset-link">
+      <button id="resetBtn">清空全部休息日</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- 常量与状态 ---------- */
+  var PERSON_COLORS = { 1: "#4f8cff", 2: "#1fb57a", 3: "#f59e0b", 4: "#a855f7" };
+  var LEGACY_STORE_KEY = "dorm-duty-rest-days-v1";
+  var CACHE_KEY = "dorm-duty-cache-v2";
+  var QUEUE_KEY = "dorm-duty-queue-v2";
+  var ANCHOR = new Date(2026, 8, 28); // 2026年9月28日
+  var ANCHOR_PERSON_INDEX = 1;        // 当天是 2 号（0基索引1）
+
+  var apiEnabled = location.protocol === "http:" || location.protocol === "https:";
+  var apiBase = (window.DUTY_API_BASE || "").replace(/\/$/, "");
+  var serverRev = 0;                  // 服务端数据版本
+  var online = false;                 // 当前是否能连上服务
+  var pendingOps = loadQueue();       // 待同步操作
+  var processing = false;
+  var eventSource = null;
+  var sseOpen = false;
+  var pollTimer = null;
+
+  var restDays = loadCachedDays();    // Set<"YYYY-MM-DD">
+  var currentPerson = 2;
+  var viewYear, viewMonth;            // 当前日历显示的年月
+
+  /* ---------- 日期工具（全部用本地时间，避免 UTC 偏移） ---------- */
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function keyOf(y, m, d) { return y + "-" + pad(m + 1) + "-" + pad(d); }
+  function dateKey(dt) { return keyOf(dt.getFullYear(), dt.getMonth(), dt.getDate()); }
+  function sameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+  function shiftDay(dt, n) { dt.setDate(dt.getDate() + n); return dt; }
+  function mod(n, m) { return ((n % m) + m) % m; }
+
+  function loadCachedDays() {
+    try {
+      var cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (cached && Array.isArray(cached.days)) {
+        serverRev = cached.rev || 0;
+        return new Set(cached.days);
+      }
+      // 迁移旧版本地数据
+      var legacy = JSON.parse(localStorage.getItem(LEGACY_STORE_KEY) || "[]");
+      if (Array.isArray(legacy)) return new Set(legacy);
+    } catch (e) { /* 忽略损坏缓存 */ }
+    return new Set();
+  }
+  function saveCache() {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ rev: serverRev, days: Array.from(restDays) }));
+  }
+  function loadQueue() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function saveQueue() {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(pendingOps));
+  }
+  function labelOfKey(k) {
+    var parts = k.split("-");
+    return Number(parts[1]) + "月" + Number(parts[2]) + "日";
+  }
+
+  /* ---------- 核心：某日的值日生（1-4），休息日返回 0 ---------- */
+  function getDutyPerson(dt) {
+    if (restDays.has(dateKey(dt))) return 0;
+    var idx = ANCHOR_PERSON_INDEX;
+    if (sameDay(dt, ANCHOR)) return idx + 1;
+    var step = dt.getTime() > ANCHOR.getTime() ? 1 : -1;
+    var cur = shiftDay(new Date(ANCHOR.getTime()), step);
+    while (true) {
+      if (!restDays.has(dateKey(cur))) idx = mod(idx + step, 4);
+      if (sameDay(cur, dt)) break;
+      shiftDay(cur, step);
+    }
+    return idx + 1;
+  }
+
+  /* ---------- DOM ---------- */
+  var homeEl = document.getElementById("home");
+  var calEl = document.getElementById("calendar");
+  var gridEl = document.getElementById("dateGrid");
+  var monthLabelEl = document.getElementById("monthLabel");
+  var titleTextEl = document.getElementById("titleText");
+  var titleDotEl = document.getElementById("titleDot");
+  var legendMineEl = document.getElementById("legendMine");
+  var nextDutyEl = document.getElementById("nextDuty");
+  var monthJumpEl = document.getElementById("monthJump");
+  var syncPillEl = document.getElementById("syncPill");
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+
+  /* ---------- 同步状态显示 ---------- */
+  function setPill(kind, text) {
+    syncPillEl.className = "sync-pill" + (kind ? " " + kind : "");
+    syncPillEl.innerHTML = "<i></i>" + text;
+    if (!kind) {
+      syncPillEl.classList.remove("pulse");
+      void syncPillEl.offsetWidth;     // 重启动画
+      syncPillEl.classList.add("pulse");
+    }
+  }
+  function markSynced() {
+    var d = new Date();
+    setPill("", "已同步 " + pad(d.getHours()) + ":" + pad(d.getMinutes()));
+  }
+  function refreshPill() {
+    if (!apiEnabled) { setPill("offline", "本地模式"); return; }
+    if (pendingOps.length > 0) { setPill("pending", "待同步 " + pendingOps.length + " 项"); return; }
+    if (online) markSynced();
+    else setPill("offline", "未连接");
+  }
+
+  /* 同一浏览器其他标签页改了本地缓存 */
+  window.addEventListener("storage", function (e) {
+    if (e.key !== CACHE_KEY) return;
+    try {
+      var c = JSON.parse(e.newValue || "null");
+      if (c) applyServerState(c.rev || 0, c.days);
+    } catch (err) { /* ignore */ }
+  });
+
+  /* ---------- 云端同步 ---------- */
+  function applyServerState(rev, days) {
+    if (rev <= serverRev) return;
+    serverRev = rev;
+    restDays = new Set(Array.isArray(days) ? days : []);
+    saveCache();
+    if (!calEl.classList.contains("hidden")) renderCalendar();
+    refreshPill();
+  }
+
+  function apiFetch(p, options) {
+    return fetch(apiBase + p, options).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function fetchState() {
+    return apiFetch("/api/state").then(function (s) {
+      online = true;
+      // 首次连接且云端为空：自动把本地旧数据上传
+      if (s.rev === 0 && (!s.days || s.days.length === 0) && restDays.size > 0 && pendingOps.length === 0) {
+        Array.from(restDays).forEach(function (d) {
+          pendingOps.push({ type: "set", date: d, rest: true });
+        });
+        saveQueue();
+      }
+      applyServerState(s.rev, s.days);
+      processQueue();
+    }).catch(function () {
+      online = false;
+      refreshPill();
+    });
+  }
+
+  function postOp(op) {
+    if (op.type === "clear") {
+      return apiFetch("/api/rest-days/clear", { method: "POST" });
+    }
+    return apiFetch("/api/rest-days", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: op.date, rest: op.rest })
+    });
+  }
+
+  function processQueue() {
+    if (processing || !apiEnabled || pendingOps.length === 0) { refreshPill(); return; }
+    processing = true;
+    var op = pendingOps[0];
+    postOp(op).then(function (s) {
+      pendingOps.shift();
+      saveQueue();
+      processing = false;
+      online = true;
+      applyServerState(s.rev, s.days);
+      processQueue();
+    }).catch(function () {
+      processing = false;
+      online = false;
+      refreshPill();
+    });
+  }
+
+  function connectStream() {
+    if (!apiEnabled || !window.EventSource) { startPolling(10000); return; }
+    eventSource = new EventSource(apiBase + "/api/events");
+    eventSource.onopen = function () {
+      sseOpen = true;
+      online = true;
+      fetchState();          // 重连后拉取最新数据并补同步待处理操作
+    };
+    eventSource.onmessage = function (ev) {
+      try {
+        var msg = JSON.parse(ev.data);
+        if (msg.type === "state") applyServerState(msg.rev, msg.days);
+      } catch (e) { /* ignore */ }
+    };
+    eventSource.onerror = function () {
+      sseOpen = false;
+      online = false;
+      if (!pollTimer) startPolling(5000);
+      refreshPill();
+    };
+  }
+
+  function startPolling(interval) {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(function () {
+      if (!sseOpen) fetchState();
+    }, interval);
+  }
+
+  window.addEventListener("online", function () {
+    online = true;
+    fetchState();
+  });
+  window.addEventListener("offline", function () {
+    online = false;
+    refreshPill();
+  });
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+  }
+
+  /* ---------- 页面切换 ---------- */
+  document.querySelectorAll(".person-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      currentPerson = Number(btn.getAttribute("data-person"));
+      var now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      titleTextEl.textContent = currentPerson + " 号";
+      titleDotEl.style.background = PERSON_COLORS[currentPerson];
+      legendMineEl.style.background = PERSON_COLORS[currentPerson];
+      homeEl.classList.add("hidden");
+      calEl.classList.remove("hidden");
+      renderCalendar();
+    });
+  });
+
+  document.getElementById("backBtn").addEventListener("click", function () {
+    calEl.classList.add("hidden");
+    homeEl.classList.remove("hidden");
+  });
+
+  document.getElementById("prevMonth").addEventListener("click", function () {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    renderCalendar();
+  });
+  document.getElementById("nextMonth").addEventListener("click", function () {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    renderCalendar();
+  });
+  document.getElementById("todayBtn").addEventListener("click", function () {
+    var now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth();
+    renderCalendar();
+  });
+
+  /* ---------- 点击月份标题：快速跳转到任意月份（提前修改） ---------- */
+  monthLabelEl.addEventListener("click", function () {
+    if (typeof monthJumpEl.showPicker === "function") {
+      try { monthJumpEl.showPicker(); return; } catch (err) { /* 回退到 click */ }
+    }
+    monthJumpEl.click();
+  });
+  monthJumpEl.addEventListener("change", function () {
+    var v = monthJumpEl.value;          // "YYYY-MM"
+    if (!v) return;
+    var parts = v.split("-");
+    viewYear = Number(parts[0]);
+    viewMonth = Number(parts[1]) - 1;
+    renderCalendar();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    if (restDays.size === 0 && pendingOps.length === 0) { showToast("当前还没有休息日"); return; }
+    if (confirm("确定清空全部休息日吗？")) {
+      restDays.clear();
+      saveCache();
+      pendingOps = [{ type: "clear" }];
+      saveQueue();
+      renderCalendar();
+      showToast("已清空全部休息日，值日恢复连续轮转");
+      processQueue();
+    }
+  });
+
+  /* ---------- 点击日期：标记 / 取消休息日 ---------- */
+  gridEl.addEventListener("click", function (e) {
+    var cell = e.target.closest(".cell");
+    if (!cell || cell.classList.contains("other-month")) return;
+    var k = cell.getAttribute("data-key");
+    var willRest = !restDays.has(k);
+    if (willRest) {
+      restDays.add(k);
+      showToast("已将 " + labelOfKey(k) + " 设为休息日，值日自动顺延");
+    } else {
+      restDays.delete(k);
+      showToast("已取消 " + labelOfKey(k) + " 的休息日");
+    }
+    saveCache();
+    pendingOps.push({ type: "set", date: k, rest: willRest });
+    saveQueue();
+    renderCalendar();
+    processQueue();
+  });
+
+  /* ---------- 渲染日历 ---------- */
+  function renderCalendar() {
+    monthLabelEl.textContent = viewYear + "年" + (viewMonth + 1) + "月";
+    monthJumpEl.value = viewYear + "-" + pad(viewMonth + 1);
+    gridEl.innerHTML = "";
+
+    var today = new Date();
+    var firstDay = new Date(viewYear, viewMonth, 1);
+    var startWeekday = firstDay.getDay();                 // 0=周日
+    var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    var prevDays = new Date(viewYear, viewMonth, 0).getDate();
+
+    // 共 42 格（6行），补齐上月末尾与下月开头
+    for (var i = 0; i < 42; i++) {
+      var dayNum, cellYear = viewYear, cellMonth = viewMonth, inMonth = true;
+      if (i < startWeekday) {
+        dayNum = prevDays - startWeekday + 1 + i;
+        cellMonth--;
+        if (cellMonth < 0) { cellMonth = 11; cellYear--; }
+        inMonth = false;
+      } else if (i >= startWeekday + daysInMonth) {
+        dayNum = i - startWeekday - daysInMonth + 1;
+        cellMonth++;
+        if (cellMonth > 11) { cellMonth = 0; cellYear++; }
+        inMonth = false;
+      } else {
+        dayNum = i - startWeekday + 1;
+      }
+
+      var dt = new Date(cellYear, cellMonth, dayNum);
+      var k = keyOf(cellYear, cellMonth, dayNum);
+      var person = getDutyPerson(dt);
+
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      cell.setAttribute("data-key", k);
+      if (!inMonth) cell.classList.add("other-month");
+      if (sameDay(dt, today)) cell.classList.add("today");
+
+      var dSpan = document.createElement("span");
+      dSpan.className = "d";
+      dSpan.textContent = dayNum;
+      cell.appendChild(dSpan);
+
+      var badge = document.createElement("span");
+      badge.className = "badge";
+      if (person === 0) {
+        cell.classList.add("rest");
+        badge.textContent = "休";
+      } else if (person === currentPerson) {
+        cell.classList.add("mine", "p" + person);
+        badge.textContent = person;
+      } else {
+        cell.classList.add("other", "p" + person);
+        badge.textContent = person;
+      }
+      cell.appendChild(badge);
+      gridEl.appendChild(cell);
+    }
+
+    renderNextDuty();
+  }
+
+  /* ---------- 下一次值日提示 ---------- */
+  function renderNextDuty() {
+    var now = new Date();
+    if (sameDay(now, ANCHOR)) { /* 今天就是锚点日 */ }
+    var cur = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    for (var i = 0; i < 400; i++) {
+      var person = getDutyPerson(cur);
+      if (person === currentPerson) {
+        var label = cur.getMonth() + 1 + "月" + cur.getDate() + "日";
+        if (sameDay(cur, now)) {
+          nextDutyEl.innerHTML = "今天（<b>" + label + "</b>）是 <b>" + currentPerson + " 号</b>值日";
+        } else {
+          nextDutyEl.innerHTML = "下一次值日：<b>" + label + "</b>（周" +
+            "日一二三四五六".charAt(cur.getDay()) + "）";
+        }
+        return;
+      }
+      shiftDay(cur, 1);
+    }
+    nextDutyEl.textContent = "";
+  }
+
+  /* ---------- 启动 ---------- */
+  if (apiEnabled) {
+    setPill("offline", "连接中…");
+    fetchState();
+    connectStream();
+  } else {
+    refreshPill();
+  }
+})();
+</script>
+</body>
+</html>
